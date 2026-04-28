@@ -15,7 +15,7 @@ import {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [gapiReady, setGapiReady] = useState(false);
+  const [, setGapiReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);

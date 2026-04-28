@@ -1,6 +1,5 @@
 import React from 'react';
 
-
 export default function Header({ currentUser, onChangeUser, isSignedIn, onSignIn, onSignOut }) {
   return (
     <header style={styles.header}>
