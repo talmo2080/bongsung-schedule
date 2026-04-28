@@ -33,3 +33,10 @@ export const RECURRENCE_OPTIONS = [
 
 export const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 export const MONTHS = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+
+// 매주 반복되는 고정 정기 일정 (수정/삭제 불가)
+export const FIXED_EVENTS = [
+  { day: '월', rruleDay: 'MO', title: '싱글벙글나비축제', category: '나비문화축제', author: '정세연', startTime: '19:00', endTime: '21:00' },
+  { day: '화', rruleDay: 'TU', title: '방송스피치사관학교 26기', category: '방송스피치 사관학교', author: '정세연', startTime: '19:00', endTime: '22:00' },
+  { day: '수', rruleDay: 'WE', title: '방송스피치사관학교 25기', category: '방송스피치 사관학교', author: '정세연', startTime: '19:00', endTime: '22:00' },
+];

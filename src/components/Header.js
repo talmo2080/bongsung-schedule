@@ -3,7 +3,6 @@ import React from 'react';
 export default function Header({
   currentUser, onChangeUser,
   isSignedIn, onSignIn, onSignOut,
-  onBulkRegister, onNoticeList,
 }) {
   return (
     <header style={styles.header}>
@@ -11,12 +10,6 @@ export default function Header({
         <h1 style={styles.title}>봉숭아학당 스케줄 앱</h1>
       </div>
       <div style={styles.right}>
-        {isSignedIn && (
-          <>
-            <button style={styles.actionBtn} onClick={onBulkRegister}>일괄등록</button>
-            <button style={{ ...styles.actionBtn, backgroundColor: '#0F766E' }} onClick={onNoticeList}>공지목록</button>
-          </>
-        )}
         <div
           style={{ ...styles.userBadge, backgroundColor: currentUser.color }}
           onClick={onChangeUser}
@@ -55,17 +48,6 @@ const styles = {
   left: { display: 'flex', alignItems: 'center' },
   title: { fontSize: '20px', fontWeight: '700', color: '#1F2937', margin: 0 },
   right: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
-  actionBtn: {
-    padding: '8px 12px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#6366F1',
-    color: '#FFFFFF',
-    fontSize: '14px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    minHeight: '44px',
-  },
   userBadge: {
     display: 'flex', flexDirection: 'column', alignItems: 'center',
     padding: '6px 12px', borderRadius: '10px', cursor: 'pointer', minWidth: '64px',

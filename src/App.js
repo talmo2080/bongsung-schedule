@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import UserSelect from './components/UserSelect';
 import Header from './components/Header';
 import Calendar from './components/Calendar';
-import BulkEventModal from './components/BulkEventModal';
+import BulkAdd from './components/BulkAdd';
 import NoticeList from './components/NoticeList';
 import {
   initializeGapi,
@@ -41,15 +41,31 @@ const PRESET_EVENTS = [
     recurrenceRule: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
   },
   {
-    title: '스피치사관학교',
+    title: '방송스피치사관학교 26기',
     author: '정세연',
     category: '방송스피치 사관학교',
     description: '',
     startDate: `${nextWeekday('TU')}T19:00:00`,
     endDate: `${nextWeekday('TU')}T22:00:00`,
     isAllDay: false,
-    recurrenceRule: 'RRULE:FREQ=WEEKLY;BYDAY=TU,WE',
+    recurrenceRule: 'RRULE:FREQ=WEEKLY;BYDAY=TU',
   },
+  {
+    title: '방송스피치사관학교 25기',
+    author: '정세연',
+    category: '방송스피치 사관학교',
+    description: '',
+    startDate: `${nextWeekday('WE')}T19:00:00`,
+    endDate: `${nextWeekday('WE')}T22:00:00`,
+    isAllDay: false,
+    recurrenceRule: 'RRULE:FREQ=WEEKLY;BYDAY=WE',
+  },
+];
+
+const TABS = [
+  { key: 'calendar', label: '캘린더' },
+  { key: 'bulk', label: '일괄등록' },
+  { key: 'notice', label: '공지목록' },
 ];
 
 export default function App() {
@@ -63,8 +79,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [presetDone, setPresetDone] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
-  const [showNoticeList, setShowNoticeList] = useState(false);
+  const [activeTab, setActiveTab] = useState('calendar');
 
   useEffect(() => {
     initializeGapi((autoSignedIn) => {
@@ -111,13 +126,17 @@ export default function App() {
     signOut();
     setSignedIn(false);
     setEvents([]);
-    // 사용자 선택은 유지 (토큰만 삭제)
   }
 
   async function handleCreateEvent(data) {
     const ev = await createEvent(data);
     await loadEvents();
     return ev;
+  }
+
+  // 일괄 등록용: 개별 생성, 완료 후 loadEvents는 BulkAdd에서 onDone으로 호출
+  async function handleCreateEventSingle(data) {
+    return await createEvent(data);
   }
 
   async function handleUpdateEvent(id, data) {
@@ -132,7 +151,12 @@ export default function App() {
   }
 
   async function handleSetupPresets() {
-    if (!window.confirm('정기 일정 2개를 구글 캘린더에 등록하시겠습니까?\n\n• 싱글벙글나비축제 (매주 월요일 19:00~21:00)\n• 스피치사관학교 (매주 화·수요일 19:00~22:00)')) return;
+    if (!window.confirm(
+      '정기 일정 3개를 구글 캘린더에 등록하시겠습니까?\n\n' +
+      '• 싱글벙글나비축제 (매주 월요일 19:00~21:00)\n' +
+      '• 방송스피치사관학교 26기 (매주 화요일 19:00~22:00)\n' +
+      '• 방송스피치사관학교 25기 (매주 수요일 19:00~22:00)'
+    )) return;
     setLoading(true);
     try {
       for (const ev of PRESET_EVENTS) {
@@ -160,9 +184,21 @@ export default function App() {
         isSignedIn={signedIn}
         onSignIn={handleSignIn}
         onSignOut={handleSignOut}
-        onBulkRegister={() => setShowBulkModal(true)}
-        onNoticeList={() => setShowNoticeList(true)}
       />
+
+      {/* 탭 네비게이션 */}
+      <div style={styles.tabBar}>
+        {TABS.map(tab => (
+          <button
+            key={tab.key}
+            style={{ ...styles.tabBtn, ...(activeTab === tab.key ? styles.tabBtnActive : {}) }}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {loading && (
         <div style={styles.loadingBar}>
           <span style={styles.loadingText}>처리 중...</span>
@@ -176,33 +212,36 @@ export default function App() {
       )}
       {signedIn && !presetDone && (
         <div style={styles.presetBar}>
-          <span style={styles.presetText}>정기 일정(나비축제·스피치)을 아직 등록하지 않으셨나요?</span>
+          <span style={styles.presetText}>정기 일정(나비축제·스피치 25/26기)을 아직 등록하지 않으셨나요?</span>
           <button style={styles.presetBtn} onClick={handleSetupPresets}>정기일정 등록</button>
         </div>
       )}
-      <Calendar
-        currentUser={currentUser}
-        isSignedIn={signedIn}
-        events={events}
-        onCreateEvent={handleCreateEvent}
-        onUpdateEvent={handleUpdateEvent}
-        onDeleteEvent={handleDeleteEvent}
-        onRefresh={loadEvents}
-      />
 
-      {showBulkModal && (
-        <BulkEventModal
-          onSave={handleCreateEvent}
-          onClose={() => { setShowBulkModal(false); loadEvents(); }}
-        />
-      )}
-
-      {showNoticeList && (
-        <NoticeList
-          events={events}
-          onClose={() => setShowNoticeList(false)}
-        />
-      )}
+      {/* 탭 콘텐츠 */}
+      <div style={styles.content}>
+        {activeTab === 'calendar' && (
+          <Calendar
+            currentUser={currentUser}
+            isSignedIn={signedIn}
+            events={events}
+            onCreateEvent={handleCreateEvent}
+            onUpdateEvent={handleUpdateEvent}
+            onDeleteEvent={handleDeleteEvent}
+            onRefresh={loadEvents}
+          />
+        )}
+        {activeTab === 'bulk' && (
+          <BulkAdd
+            currentUser={currentUser}
+            isSignedIn={signedIn}
+            onSave={handleCreateEventSingle}
+            onDone={loadEvents}
+          />
+        )}
+        {activeTab === 'notice' && (
+          <NoticeList events={events} />
+        )}
+      </div>
     </div>
   );
 }
@@ -212,6 +251,22 @@ const styles = {
     minHeight: '100vh', display: 'flex', flexDirection: 'column',
     backgroundColor: '#FFFFFF', fontFamily: "'Noto Sans KR', sans-serif",
   },
+  tabBar: {
+    display: 'flex', borderBottom: '2px solid #E5E7EB',
+    backgroundColor: '#FFFFFF', position: 'sticky', top: '66px', zIndex: 90,
+  },
+  tabBtn: {
+    flex: 1, padding: '12px 0', border: 'none', background: 'none',
+    fontSize: '15px', fontWeight: '600', color: '#6B7280',
+    cursor: 'pointer', borderBottom: '3px solid transparent',
+    transition: 'all 0.15s',
+  },
+  tabBtnActive: {
+    color: '#1E3A8A',
+    borderBottom: '3px solid #1E3A8A',
+    backgroundColor: '#F8FAFF',
+  },
+  content: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   loadingBar: {
     backgroundColor: '#EFF6FF', padding: '10px 20px',
     textAlign: 'center', borderBottom: '1px solid #BFDBFE',

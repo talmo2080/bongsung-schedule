@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MEMBERS, CATEGORIES, WEEKDAYS, MONTHS } from '../constants/data';
+import { MEMBERS, CATEGORIES, WEEKDAYS, MONTHS, FIXED_EVENTS } from '../constants/data';
 import { parseEventDescription, parseEventSummary } from '../utils/googleCalendar';
 import EventModal from './EventModal';
 
@@ -103,6 +103,13 @@ export default function Calendar({
     e.stopPropagation();
     if (!isSignedIn) {
       alert('구글 캘린더 연결 후 일정을 수정할 수 있습니다.');
+      return;
+    }
+    // 고정 정기 일정은 수정 불가
+    const titleOnly = parseEventSummary(ev.summary).title;
+    const isFixed = FIXED_EVENTS.some(fe => fe.title === titleOnly);
+    if (isFixed) {
+      alert('고정 정기 일정은 수정/삭제할 수 없습니다.');
       return;
     }
     const parsedSummary = parseEventSummary(ev.summary);
