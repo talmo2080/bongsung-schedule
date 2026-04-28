@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import UserSelect from './components/UserSelect';
 import Header from './components/Header';
 import Calendar from './components/Calendar';
+import BulkEventModal from './components/BulkEventModal';
+import NoticeList from './components/NoticeList';
 import {
   initializeGapi,
   signIn,
@@ -61,6 +63,8 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [presetDone, setPresetDone] = useState(false);
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showNoticeList, setShowNoticeList] = useState(false);
 
   useEffect(() => {
     initializeGapi((autoSignedIn) => {
@@ -156,6 +160,8 @@ export default function App() {
         isSignedIn={signedIn}
         onSignIn={handleSignIn}
         onSignOut={handleSignOut}
+        onBulkRegister={() => setShowBulkModal(true)}
+        onNoticeList={() => setShowNoticeList(true)}
       />
       {loading && (
         <div style={styles.loadingBar}>
@@ -183,6 +189,20 @@ export default function App() {
         onDeleteEvent={handleDeleteEvent}
         onRefresh={loadEvents}
       />
+
+      {showBulkModal && (
+        <BulkEventModal
+          onSave={handleCreateEvent}
+          onClose={() => { setShowBulkModal(false); loadEvents(); }}
+        />
+      )}
+
+      {showNoticeList && (
+        <NoticeList
+          events={events}
+          onClose={() => setShowNoticeList(false)}
+        />
+      )}
     </div>
   );
 }
