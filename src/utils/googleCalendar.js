@@ -109,6 +109,12 @@ export function isSignedIn() {
   return window.gapi && window.gapi.client && window.gapi.client.getToken() !== null;
 }
 
+// "2026-04-28T19:00:00" → "2026-04-28T19:00:00+09:00" (이미 offset 있으면 그대로)
+function toSeoulDateTime(str) {
+  if (!str || str.includes('+') || str.includes('Z')) return str;
+  return `${str}+09:00`;
+}
+
 export async function listEvents(timeMin, timeMax) {
   const response = await window.gapi.client.calendar.events.list({
     calendarId: CALENDAR_ID,
@@ -130,10 +136,10 @@ export async function createEvent(eventData) {
     description: `${category}/${author}/${description || ''}`,
     start: isAllDay
       ? { date: startDate }
-      : { dateTime: startDate, timeZone: 'Asia/Seoul' },
+      : { dateTime: toSeoulDateTime(startDate), timeZone: 'Asia/Seoul' },
     end: isAllDay
       ? { date: endDate }
-      : { dateTime: endDate, timeZone: 'Asia/Seoul' },
+      : { dateTime: toSeoulDateTime(endDate), timeZone: 'Asia/Seoul' },
   };
 
   if (recurrenceRule) {
@@ -155,10 +161,10 @@ export async function updateEvent(eventId, eventData) {
     description: `${category}/${author}/${description || ''}`,
     start: isAllDay
       ? { date: startDate }
-      : { dateTime: startDate, timeZone: 'Asia/Seoul' },
+      : { dateTime: toSeoulDateTime(startDate), timeZone: 'Asia/Seoul' },
     end: isAllDay
       ? { date: endDate }
-      : { dateTime: endDate, timeZone: 'Asia/Seoul' },
+      : { dateTime: toSeoulDateTime(endDate), timeZone: 'Asia/Seoul' },
     recurrence: recurrenceRule ? [recurrenceRule] : [],
   };
 

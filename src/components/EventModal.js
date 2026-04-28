@@ -100,7 +100,11 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
   }, [event, selectedDate, currentUser.name, isEdit]);
 
   function toDateStr(d) {
-    return d.toISOString().split('T')[0];
+    // toISOString()은 UTC 변환 → 새벽 시간대 날짜 밀림 발생. 로컬 시간 그대로 사용
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
   function toTimeStr(d) {
     return d.toTimeString().slice(0, 5);
