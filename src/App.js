@@ -15,14 +15,12 @@ import {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [, setGapiReady] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     initializeGapi(() => {
-      setGapiReady(true);
       setSignedIn(isSignedIn());
     });
   }, []);
