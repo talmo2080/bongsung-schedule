@@ -1,5 +1,5 @@
 import React from 'react';
-import { MEMBERS } from '../constants/data';
+
 
 export default function Header({ currentUser, onChangeUser, isSignedIn, onSignIn, onSignOut }) {
   return (

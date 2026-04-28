@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { MEMBERS, CATEGORIES, WEEKDAYS, MONTHS } from '../constants/data';
 import { parseEventDescription, parseEventSummary } from '../utils/googleCalendar';
 import EventModal from './EventModal';
