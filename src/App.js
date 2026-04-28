@@ -20,8 +20,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    initializeGapi(() => {
-      setSignedIn(isSignedIn());
+    initializeGapi((autoSignedIn) => {
+      setSignedIn(autoSignedIn);
     });
   }, []);
 

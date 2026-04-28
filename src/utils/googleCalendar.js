@@ -2,10 +2,37 @@ const CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const CALENDAR_ID = process.env.REACT_APP_CALENDAR_ID;
 const SCOPES = 'https://www.googleapis.com/auth/calendar';
 const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+const TOKEN_KEY = 'bongsung_gapi_token';
 
 let tokenClient = null;
 let gapiInited = false;
 let gisInited = false;
+
+// 토큰을 localStorage에 저장 (만료 시각 포함)
+function saveToken(token) {
+  const expiresAt = Date.now() + (token.expires_in - 60) * 1000; // 1분 여유
+  localStorage.setItem(TOKEN_KEY, JSON.stringify({ ...token, expires_at: expiresAt }));
+}
+
+// localStorage에서 유효한 토큰 불러오기
+function loadToken() {
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY);
+    if (!raw) return null;
+    const token = JSON.parse(raw);
+    if (Date.now() > token.expires_at) {
+      localStorage.removeItem(TOKEN_KEY);
+      return null;
+    }
+    return token;
+  } catch {
+    return null;
+  }
+}
+
+export function clearToken() {
+  localStorage.removeItem(TOKEN_KEY);
+}
 
 export function initializeGapi(onReady) {
   const script = document.createElement('script');
@@ -16,7 +43,7 @@ export function initializeGapi(onReady) {
         discoveryDocs: [DISCOVERY_DOC],
       });
       gapiInited = true;
-      if (gisInited && onReady) onReady();
+      tryAutoSignIn(onReady);
     });
   };
   document.body.appendChild(script);
@@ -30,9 +57,24 @@ export function initializeGapi(onReady) {
       callback: '',
     });
     gisInited = true;
-    if (gapiInited && onReady) onReady();
+    tryAutoSignIn(onReady);
   };
   document.body.appendChild(gisScript);
+}
+
+// 두 스크립트 모두 로드된 후 자동 로그인 시도
+function tryAutoSignIn(onReady) {
+  if (!gapiInited || !gisInited) return;
+
+  const savedToken = loadToken();
+  if (savedToken) {
+    // 저장된 토큰이 유효하면 바로 복원
+    window.gapi.client.setToken(savedToken);
+    if (onReady) onReady(true);
+  } else {
+    // 토큰 없으면 로그인 필요 상태로 전달
+    if (onReady) onReady(false);
+  }
 }
 
 export function signIn() {
@@ -42,6 +84,8 @@ export function signIn() {
         reject(resp);
         return;
       }
+      // 발급된 토큰 저장
+      saveToken(window.gapi.client.getToken());
       resolve(resp);
     };
     if (window.gapi.client.getToken() === null) {
@@ -58,6 +102,7 @@ export function signOut() {
     window.google.accounts.oauth2.revoke(token.access_token);
     window.gapi.client.setToken('');
   }
+  clearToken();
 }
 
 export function isSignedIn() {

@@ -37,11 +37,13 @@ export default function Calendar({
   const getFirstDay = (y, m) => new Date(y, m, 1).getDay();
 
   function getColorForEvent(ev) {
-    const { author } = parseEventSummary(ev.summary);
-    const { category } = parseEventDescription(ev.description);
-    const member = MEMBERS.find(m => m.name === author);
-    const cat = CATEGORIES.find(c => c.name === category);
-    return cat?.color || member?.color || '#94A3B8';
+    // Description의 두 번째 필드(작성자)를 우선 파싱
+    const { author: authorFromDesc } = parseEventDescription(ev.description);
+    // 없으면 summary의 [작성자] 파싱으로 폴백
+    const { author: authorFromSummary } = parseEventSummary(ev.summary);
+    const authorName = authorFromDesc || authorFromSummary;
+    const member = MEMBERS.find(m => m.name === authorName);
+    return member?.color || '#94A3B8';
   }
 
   function filterEvents(evs) {
