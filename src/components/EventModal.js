@@ -1,5 +1,53 @@
 import React, { useState, useEffect } from 'react';
-import { CATEGORIES, MEMBERS, RECURRENCE_OPTIONS } from '../constants/data';
+import { CATEGORIES, MEMBERS } from '../constants/data';
+
+const RRULE_DAYS = [
+  { code: 'MO', label: '월' },
+  { code: 'TU', label: '화' },
+  { code: 'WE', label: '수' },
+  { code: 'TH', label: '목' },
+  { code: 'FR', label: '금' },
+  { code: 'SA', label: '토' },
+  { code: 'SU', label: '일' },
+];
+
+const FREQ_OPTIONS = [
+  { value: 'NONE',    label: '반복 없음' },
+  { value: 'DAILY',   label: '매일' },
+  { value: 'WEEKLY',  label: '매주' },
+  { value: 'MONTHLY', label: '매월' },
+  { value: 'YEARLY',  label: '매년' },
+];
+
+function buildRRULE(freq, days, until) {
+  if (!freq || freq === 'NONE') return null;
+  let rule = `RRULE:FREQ=${freq}`;
+  if (freq === 'WEEKLY' && days.length > 0) {
+    rule += `;BYDAY=${days.join(',')}`;
+  }
+  if (until) {
+    rule += `;UNTIL=${until.replace(/-/g, '')}T235959Z`;
+  }
+  return rule;
+}
+
+function parseRRULE(rrules) {
+  if (!rrules || rrules.length === 0) return { freq: 'NONE', days: [], until: '' };
+  const inner = rrules[0].replace(/^RRULE:/, '');
+  const params = {};
+  inner.split(';').forEach(part => {
+    const [k, v] = part.split('=');
+    if (k) params[k] = v || '';
+  });
+  const until = params.UNTIL
+    ? `${params.UNTIL.slice(0,4)}-${params.UNTIL.slice(4,6)}-${params.UNTIL.slice(6,8)}`
+    : '';
+  return {
+    freq: params.FREQ || 'NONE',
+    days: params.BYDAY ? params.BYDAY.split(',') : [],
+    until,
+  };
+}
 
 export default function EventModal({ event, selectedDate, currentUser, onSave, onDelete, onClose }) {
   const isEdit = !!event;
@@ -13,7 +61,9 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
   const [endDate, setEndDate] = useState('');
   const [endTime, setEndTime] = useState('10:00');
   const [isAllDay, setIsAllDay] = useState(false);
-  const [recurrence, setRecurrence] = useState('NONE');
+  const [recurrenceFreq, setRecurrenceFreq] = useState('NONE');
+  const [recurrenceDays, setRecurrenceDays] = useState([]);
+  const [recurrenceUntil, setRecurrenceUntil] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -38,10 +88,10 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
         setEndTime(toTimeStr(e));
       }
 
-      if (rec && rec.length > 0) {
-        const match = rec[0].match(/FREQ=(\w+)/);
-        if (match) setRecurrence(match[1]);
-      }
+      const parsed = parseRRULE(rec);
+      setRecurrenceFreq(parsed.freq);
+      setRecurrenceDays(parsed.days);
+      setRecurrenceUntil(parsed.until);
     } else if (selectedDate) {
       const d = toDateStr(selectedDate);
       setStartDate(d);
@@ -52,9 +102,13 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
   function toDateStr(d) {
     return d.toISOString().split('T')[0];
   }
-
   function toTimeStr(d) {
     return d.toTimeString().slice(0, 5);
+  }
+  function toggleDay(code) {
+    setRecurrenceDays(prev =>
+      prev.includes(code) ? prev.filter(d => d !== code) : [...prev, code]
+    );
   }
 
   async function handleSave() {
@@ -62,7 +116,6 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
       alert('일정 제목을 입력해 주세요.');
       return;
     }
-
     setSaving(true);
     try {
       let startISO, endISO;
@@ -73,7 +126,6 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
         startISO = `${startDate}T${startTime}:00`;
         endISO = `${endDate}T${endTime}:00`;
       }
-
       await onSave({
         id: event?.id,
         title: title.trim(),
@@ -83,7 +135,7 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
         startDate: startISO,
         endDate: endISO,
         isAllDay,
-        recurrence,
+        recurrenceRule: buildRRULE(recurrenceFreq, recurrenceDays, recurrenceUntil),
       });
       onClose();
     } catch (e) {
@@ -151,46 +203,64 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
           <div style={styles.dateRow}>
             <div style={styles.dateGroup}>
               <label style={styles.label}>시작일</label>
-              <input
-                type="date"
-                style={styles.input}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <input type="date" style={styles.input} value={startDate}
+                onChange={(e) => setStartDate(e.target.value)} />
               {!isAllDay && (
-                <input
-                  type="time"
-                  style={styles.input}
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
+                <input type="time" style={styles.input} value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)} />
               )}
             </div>
             <div style={styles.dateGroup}>
               <label style={styles.label}>종료일</label>
-              <input
-                type="date"
-                style={styles.input}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <input type="date" style={styles.input} value={endDate}
+                onChange={(e) => setEndDate(e.target.value)} />
               {!isAllDay && (
-                <input
-                  type="time"
-                  style={styles.input}
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
+                <input type="time" style={styles.input} value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)} />
               )}
             </div>
           </div>
 
+          {/* 반복 설정 */}
           <label style={styles.label}>반복</label>
-          <select style={styles.select} value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
-            {RECURRENCE_OPTIONS.map((r) => (
+          <select style={styles.select} value={recurrenceFreq}
+            onChange={(e) => { setRecurrenceFreq(e.target.value); setRecurrenceDays([]); }}>
+            {FREQ_OPTIONS.map((r) => (
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
+
+          {recurrenceFreq === 'WEEKLY' && (
+            <div style={styles.dayBox}>
+              <p style={styles.dayLabel}>반복 요일 선택</p>
+              <div style={styles.dayRow}>
+                {RRULE_DAYS.map(({ code, label }) => (
+                  <button
+                    key={code}
+                    type="button"
+                    style={{
+                      ...styles.dayBtn,
+                      backgroundColor: recurrenceDays.includes(code) ? '#1E3A8A' : '#F3F4F6',
+                      color: recurrenceDays.includes(code) ? '#FFFFFF' : '#374151',
+                      border: recurrenceDays.includes(code) ? '2px solid #1E3A8A' : '2px solid #E5E7EB',
+                    }}
+                    onClick={() => toggleDay(code)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recurrenceFreq !== 'NONE' && (
+            <>
+              <label style={styles.label}>반복 종료일 (선택)</label>
+              <input type="date" style={styles.input} value={recurrenceUntil}
+                onChange={(e) => setRecurrenceUntil(e.target.value)}
+                placeholder="종료일 없음" />
+            </>
+          )}
 
           <label style={styles.label}>상세 내용</label>
           <textarea
@@ -204,21 +274,13 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
 
         <div style={styles.footer}>
           {isEdit && (
-            <button
-              style={styles.deleteBtn}
-              onClick={handleDelete}
-              disabled={deleting}
-            >
+            <button style={styles.deleteBtn} onClick={handleDelete} disabled={deleting}>
               {deleting ? '삭제 중...' : '삭제'}
             </button>
           )}
           <div style={styles.footerRight}>
             <button style={styles.cancelBtn} onClick={onClose}>취소</button>
-            <button
-              style={styles.saveBtn}
-              onClick={handleSave}
-              disabled={saving}
-            >
+            <button style={styles.saveBtn} onClick={handleSave} disabled={saving}>
               {saving ? '저장 중...' : (isEdit ? '수정' : '저장')}
             </button>
           </div>
@@ -230,168 +292,79 @@ export default function EventModal({ event, selectedDate, currentUser, onSave, o
 
 const styles = {
   overlay: {
-    position: 'fixed',
-    inset: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-    padding: '16px',
+    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 1000, padding: '16px',
   },
   modal: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '16px',
-    width: '100%',
-    maxWidth: '500px',
-    maxHeight: '90vh',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
+    backgroundColor: '#FFFFFF', borderRadius: '16px', width: '100%',
+    maxWidth: '500px', maxHeight: '90vh', display: 'flex',
+    flexDirection: 'column', overflow: 'hidden',
     boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
   },
   modalHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '20px 24px 16px',
-    borderBottom: '1px solid #E5E7EB',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '20px 24px 16px', borderBottom: '1px solid #E5E7EB',
   },
-  modalTitle: {
-    fontSize: '20px',
-    fontWeight: '700',
-    color: '#1F2937',
-    margin: 0,
-  },
+  modalTitle: { fontSize: '20px', fontWeight: '700', color: '#1F2937', margin: 0 },
   closeBtn: {
-    background: 'none',
-    border: 'none',
-    fontSize: '20px',
-    cursor: 'pointer',
-    color: '#6B7280',
-    padding: '4px 8px',
-    minWidth: '44px',
-    minHeight: '44px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer',
+    color: '#6B7280', padding: '4px 8px', minWidth: '44px', minHeight: '44px',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
   },
-  body: {
-    padding: '16px 24px',
-    overflowY: 'auto',
-    flex: 1,
-  },
+  body: { padding: '16px 24px', overflowY: 'auto', flex: 1 },
   label: {
-    display: 'block',
-    fontSize: '15px',
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: '6px',
-    marginTop: '14px',
+    display: 'block', fontSize: '15px', fontWeight: '600',
+    color: '#374151', marginBottom: '6px', marginTop: '14px',
   },
   input: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: '8px',
-    border: '1.5px solid #D1D5DB',
-    fontSize: '16px',
-    color: '#1F2937',
-    boxSizing: 'border-box',
-    outline: 'none',
-    marginBottom: '4px',
+    width: '100%', padding: '12px 14px', borderRadius: '8px',
+    border: '1.5px solid #D1D5DB', fontSize: '16px', color: '#1F2937',
+    boxSizing: 'border-box', outline: 'none', marginBottom: '4px',
   },
   select: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: '8px',
-    border: '1.5px solid #D1D5DB',
-    fontSize: '16px',
-    color: '#1F2937',
-    backgroundColor: '#FFFFFF',
-    boxSizing: 'border-box',
-    outline: 'none',
+    width: '100%', padding: '12px 14px', borderRadius: '8px',
+    border: '1.5px solid #D1D5DB', fontSize: '16px', color: '#1F2937',
+    backgroundColor: '#FFFFFF', boxSizing: 'border-box', outline: 'none',
   },
   textarea: {
-    width: '100%',
-    padding: '12px 14px',
-    borderRadius: '8px',
-    border: '1.5px solid #D1D5DB',
-    fontSize: '16px',
-    color: '#1F2937',
-    boxSizing: 'border-box',
-    outline: 'none',
-    resize: 'vertical',
-    fontFamily: 'inherit',
+    width: '100%', padding: '12px 14px', borderRadius: '8px',
+    border: '1.5px solid #D1D5DB', fontSize: '16px', color: '#1F2937',
+    boxSizing: 'border-box', outline: 'none', resize: 'vertical', fontFamily: 'inherit',
   },
-  checkRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    marginTop: '14px',
+  checkRow: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px' },
+  checkbox: { width: '20px', height: '20px', cursor: 'pointer' },
+  checkLabel: { fontSize: '16px', color: '#374151', cursor: 'pointer' },
+  dateRow: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' },
+  dateGroup: { display: 'flex', flexDirection: 'column' },
+  dayBox: {
+    marginTop: '10px', padding: '14px', backgroundColor: '#F9FAFB',
+    borderRadius: '10px', border: '1px solid #E5E7EB',
   },
-  checkbox: {
-    width: '20px',
-    height: '20px',
-    cursor: 'pointer',
-  },
-  checkLabel: {
-    fontSize: '16px',
-    color: '#374151',
-    cursor: 'pointer',
-  },
-  dateRow: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '12px',
-  },
-  dateGroup: {
-    display: 'flex',
-    flexDirection: 'column',
+  dayLabel: { fontSize: '14px', color: '#6B7280', margin: '0 0 10px 0', fontWeight: '600' },
+  dayRow: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
+  dayBtn: {
+    width: '40px', height: '40px', borderRadius: '50%', fontWeight: '700',
+    fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s',
   },
   footer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '16px 24px',
-    borderTop: '1px solid #E5E7EB',
-    gap: '10px',
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '16px 24px', borderTop: '1px solid #E5E7EB', gap: '10px',
   },
-  footerRight: {
-    display: 'flex',
-    gap: '10px',
-    marginLeft: 'auto',
-  },
+  footerRight: { display: 'flex', gap: '10px', marginLeft: 'auto' },
   cancelBtn: {
-    padding: '12px 20px',
-    borderRadius: '8px',
-    border: '1.5px solid #D1D5DB',
-    backgroundColor: '#FFFFFF',
-    color: '#374151',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    minHeight: '44px',
+    padding: '12px 20px', borderRadius: '8px', border: '1.5px solid #D1D5DB',
+    backgroundColor: '#FFFFFF', color: '#374151', fontSize: '16px',
+    fontWeight: '600', cursor: 'pointer', minHeight: '44px',
   },
   saveBtn: {
-    padding: '12px 24px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#1E3A8A',
-    color: '#FFFFFF',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    minHeight: '44px',
+    padding: '12px 24px', borderRadius: '8px', border: 'none',
+    backgroundColor: '#1E3A8A', color: '#FFFFFF', fontSize: '16px',
+    fontWeight: '600', cursor: 'pointer', minHeight: '44px',
   },
   deleteBtn: {
-    padding: '12px 20px',
-    borderRadius: '8px',
-    border: 'none',
-    backgroundColor: '#DC2626',
-    color: '#FFFFFF',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    minHeight: '44px',
+    padding: '12px 20px', borderRadius: '8px', border: 'none',
+    backgroundColor: '#DC2626', color: '#FFFFFF', fontSize: '16px',
+    fontWeight: '600', cursor: 'pointer', minHeight: '44px',
   },
 };

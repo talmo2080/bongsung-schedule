@@ -123,7 +123,7 @@ export async function listEvents(timeMin, timeMax) {
 }
 
 export async function createEvent(eventData) {
-  const { title, author, category, description, startDate, endDate, isAllDay, recurrence } = eventData;
+  const { title, author, category, description, startDate, endDate, isAllDay, recurrenceRule } = eventData;
 
   const event = {
     summary: `[${author}] ${title}`,
@@ -136,8 +136,8 @@ export async function createEvent(eventData) {
       : { dateTime: endDate, timeZone: 'Asia/Seoul' },
   };
 
-  if (recurrence && recurrence !== 'NONE') {
-    event.recurrence = [`RRULE:FREQ=${recurrence}`];
+  if (recurrenceRule) {
+    event.recurrence = [recurrenceRule];
   }
 
   const response = await window.gapi.client.calendar.events.insert({
@@ -148,7 +148,7 @@ export async function createEvent(eventData) {
 }
 
 export async function updateEvent(eventId, eventData) {
-  const { title, author, category, description, startDate, endDate, isAllDay, recurrence } = eventData;
+  const { title, author, category, description, startDate, endDate, isAllDay, recurrenceRule } = eventData;
 
   const event = {
     summary: `[${author}] ${title}`,
@@ -159,13 +159,8 @@ export async function updateEvent(eventId, eventData) {
     end: isAllDay
       ? { date: endDate }
       : { dateTime: endDate, timeZone: 'Asia/Seoul' },
+    recurrence: recurrenceRule ? [recurrenceRule] : [],
   };
-
-  if (recurrence && recurrence !== 'NONE') {
-    event.recurrence = [`RRULE:FREQ=${recurrence}`];
-  } else {
-    event.recurrence = [];
-  }
 
   const response = await window.gapi.client.calendar.events.update({
     calendarId: CALENDAR_ID,
