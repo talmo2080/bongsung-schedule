@@ -37,13 +37,21 @@ export default function Calendar({
   const getFirstDay = (y, m) => new Date(y, m, 1).getDay();
 
   function getColorForEvent(ev) {
-    // Description의 두 번째 필드(작성자)를 우선 파싱
+    // 1순위: description의 두 번째 필드(카테고리/작성자/상세)
     const { author: authorFromDesc } = parseEventDescription(ev.description);
-    // 없으면 summary의 [작성자] 파싱으로 폴백
+    // 2순위: summary의 [작성자] 형식
     const { author: authorFromSummary } = parseEventSummary(ev.summary);
-    const authorName = authorFromDesc || authorFromSummary;
-    const member = MEMBERS.find(m => m.name === authorName);
-    return member?.color || '#94A3B8';
+    const authorName = (authorFromDesc || authorFromSummary || '').trim();
+
+    if (authorName) {
+      const member = MEMBERS.find(m => m.name === authorName);
+      if (member) return member.color;
+    }
+
+    // 3순위: description 또는 summary 전체 텍스트에서 구성원 이름 직접 검색
+    const fullText = `${ev.summary || ''} ${ev.description || ''}`;
+    const found = MEMBERS.find(m => fullText.includes(m.name));
+    return found?.color || '#94A3B8';
   }
 
   function filterEvents(evs) {
@@ -59,10 +67,21 @@ export default function Calendar({
   function getEventsForDay(day) {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const filtered = filterEvents(events);
-    return filtered.filter(ev => {
-      const start = ev.start?.date || ev.start?.dateTime?.split('T')[0];
-      const end = ev.end?.date || ev.end?.dateTime?.split('T')[0];
+
+    const dayEvents = filtered.filter(ev => {
+      // split('T')[0] 대신 substring(0,10) 사용: "+09:00", "Z" 모두 안전 처리
+      const start = ev.start?.date || ev.start?.dateTime?.substring(0, 10);
+      const end = ev.end?.date || ev.end?.dateTime?.substring(0, 10);
       return start <= dateStr && dateStr <= (end || start);
+    });
+
+    // 같은 날 동일 제목 중복 제거 (정기일정 중복 등록 방지)
+    const seen = new Set();
+    return dayEvents.filter(ev => {
+      const key = (ev.summary || ev.id || '').trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
   }
 

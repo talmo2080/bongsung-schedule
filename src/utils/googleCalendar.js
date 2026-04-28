@@ -185,12 +185,27 @@ export async function deleteEvent(eventId) {
 
 export function parseEventDescription(description) {
   if (!description) return { category: '', author: '', detail: '' };
-  const parts = description.split('/');
-  return {
-    category: parts[0] || '',
-    author: parts[1] || '',
-    detail: parts.slice(2).join('/') || '',
-  };
+
+  // 형식 1: 카테고리/작성자/상세 (앱 기본 형식)
+  if (description.includes('/')) {
+    const parts = description.split('/');
+    const author = parts[1]?.trim() || '';
+    if (author) {
+      return {
+        category: parts[0]?.trim() || '',
+        author,
+        detail: parts.slice(2).join('/').trim() || '',
+      };
+    }
+  }
+
+  // 형식 2: "작성자: 이름" 또는 "작성자:이름" 형식
+  const authorMatch = description.match(/작성자\s*[:：]\s*([^\n\r,\/]+)/);
+  if (authorMatch) {
+    return { category: '', author: authorMatch[1].trim(), detail: description };
+  }
+
+  return { category: '', author: '', detail: description };
 }
 
 export function parseEventSummary(summary) {
