@@ -75,10 +75,13 @@ export default function Calendar({
       return start <= dateStr && dateStr <= (end || start);
     });
 
-    // 같은 날 동일 제목 중복 제거 (정기일정 중복 등록 방지)
+    // 중복 제거: 같은 날짜 + 같은 제목 + 같은 작성자 조합
     const seen = new Set();
     return dayEvents.filter(ev => {
-      const key = (ev.summary || ev.id || '').trim();
+      const { author } = parseEventDescription(ev.description);
+      const { author: authorFallback } = parseEventSummary(ev.summary);
+      const authorKey = (author || authorFallback || '').trim();
+      const key = `${(ev.summary || '').trim()}|${dateStr}|${authorKey}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;

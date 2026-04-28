@@ -128,11 +128,41 @@ export async function listEvents(timeMin, timeMax) {
   return response.result.items || [];
 }
 
+// 같은 날 + 같은 제목 + 같은 작성자 중복 여부 확인
+async function isDuplicate(summary, dateStr) {
+  try {
+    const dayStart = new Date(`${dateStr}T00:00:00+09:00`);
+    const dayEnd = new Date(`${dateStr}T23:59:59+09:00`);
+    const res = await window.gapi.client.calendar.events.list({
+      calendarId: CALENDAR_ID,
+      timeMin: dayStart.toISOString(),
+      timeMax: dayEnd.toISOString(),
+      showDeleted: false,
+      singleEvents: true,
+      maxResults: 100,
+    });
+    const items = res.result.items || [];
+    return items.some(ev => (ev.summary || '').trim() === summary.trim());
+  } catch {
+    return false; // 확인 실패 시 등록 허용
+  }
+}
+
 export async function createEvent(eventData) {
   const { title, author, category, description, startDate, endDate, isAllDay, recurrenceRule } = eventData;
 
+  const summary = `[${author}] ${title}`;
+  const dateStr = isAllDay ? startDate : startDate.substring(0, 10);
+
+  // 중복 체크: 같은 날 + 같은 제목 + 같은 작성자
+  const dup = await isDuplicate(summary, dateStr);
+  if (dup) {
+    console.warn(`중복 일정 건너뜀: ${summary} (${dateStr})`);
+    return null;
+  }
+
   const event = {
-    summary: `[${author}] ${title}`,
+    summary,
     description: `${category}/${author}/${description || ''}`,
     start: isAllDay
       ? { date: startDate }

@@ -18,6 +18,8 @@ export const CATEGORIES = [
   { id: 'event', name: '행사', color: '#DC2626' },
   { id: 'workshop', name: '워크샵', color: '#9333EA' },
   { id: 'picnic', name: '야유회', color: '#F59E0B' },
+  { id: 'silver', name: '실버체조', color: '#0EA5E9' },
+  { id: 'janggu', name: '웃자장구공연단', color: '#F43F5E' },
   { id: 'etc', name: '기타', color: '#94A3B8' },
 ];
 
